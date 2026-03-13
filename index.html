@@ -1,0 +1,441 @@
+
+<!DOCTYPE html>
+<html ng-app="businessApp">
+
+<head>
+<meta charset="UTF-8">
+<title>Business Management SPA</title>
+
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular-route.js"></script>
+
+<style>
+
+body{
+font-family:Arial;
+margin:0;
+background:#f4f6f9;
+}
+
+nav{
+background:#2c3e50;
+padding:15px;
+}
+
+nav a{
+color:white;
+margin-right:20px;
+text-decoration:none;
+font-weight:bold;
+}
+
+.container{
+padding:20px;
+}
+
+.card{
+background:white;
+padding:20px;
+border-radius:8px;
+box-shadow:0 2px 6px rgba(0,0,0,0.2);
+margin-bottom:20px;
+}
+
+input{
+padding:8px;
+margin:5px;
+border:1px solid #ccc;
+border-radius:5px;
+}
+
+button{
+padding:8px 12px;
+margin:5px;
+border:none;
+background:#3498db;
+color:white;
+border-radius:5px;
+cursor:pointer;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:20px;
+}
+
+th{
+background:#3498db;
+color:white;
+padding:10px;
+}
+
+td{
+padding:10px;
+border-bottom:1px solid #ddd;
+}
+
+img{
+width:60px;
+border-radius:6px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<nav>
+<a href="#!/home">Home</a>
+<a href="#!/products">Products</a>
+<a href="#!/add">Add Product</a>
+<a href="#!/dashboard">Dashboard</a>
+<a href="#!/contact">Contact</a>
+<a href="#!/login">Logout</a>
+</nav>
+
+<div class="container">
+<div ng-view></div>
+</div>
+
+<script>
+
+var app = angular.module("businessApp",["ngRoute"]);
+
+app.config(function($routeProvider){
+
+$routeProvider
+
+.when("/login",{
+template:`
+
+<div class="card">
+<h2>Admin Login</h2>
+
+<input ng-model="username" placeholder="Username"><br>
+<input type="password" ng-model="password" placeholder="Password"><br>
+
+<button ng-click="login()">Login</button>
+
+</div>
+
+`,
+controller:"LoginCtrl"
+})
+
+.when("/home",{
+template:`
+
+<div class="card">
+<h2>Business Home</h2>
+<p>Welcome to Business Management System.</p>
+</div>
+
+`
+})
+
+.when("/products",{
+template:`
+
+<div class="card">
+
+<h2>Product List</h2>
+
+<input ng-model="search.id" placeholder="Filter by ID">
+<input ng-model="search.name" placeholder="Filter by Name">
+<input ng-model="search.price" placeholder="Filter by Price">
+
+<br>
+
+<button ng-click="sortPrice()">Sort Price</button>
+<button ng-click="sortQty()">Sort Quantity</button>
+
+<table>
+
+<tr>
+<th>ID</th>
+<th>Image</th>
+<th>Name</th>
+<th>Price</th>
+<th>Qty</th>
+<th>Action</th>
+</tr>
+
+<tr ng-repeat="p in products | filter:search">
+
+<td>{{p.id}}</td>
+
+<td>
+<img ng-if="p.image" ng-src="{{p.image}}">
+</td>
+
+<td>{{p.name}}</td>
+<td>{{p.price}}</td>
+<td>{{p.qty}}</td>
+
+<td>
+<button ng-click="edit(p)">Edit</button>
+<button ng-click="remove(p.id)">Delete</button>
+</td>
+
+</tr>
+
+</table>
+
+</div>
+
+`,
+controller:"ProductCtrl"
+})
+
+.when("/add",{
+template:`
+
+<div class="card">
+
+<h2>Add Product</h2>
+
+<input ng-model="product.id" placeholder="Product ID"><br>
+<input ng-model="product.name" placeholder="Product Name"><br>
+<input ng-model="product.price" placeholder="Price"><br>
+<input ng-model="product.qty" placeholder="Quantity"><br>
+
+<input type="file"
+onchange="angular.element(this).scope().uploadImage(this)">
+
+<br><br>
+
+<img ng-if="product.image" ng-src="{{product.image}}">
+
+<br>
+
+<button ng-click="save()">Save</button>
+
+</div>
+
+`,
+controller:"AddCtrl"
+})
+
+.when("/dashboard",{
+template:`
+
+<div class="card">
+
+<h2>Business Dashboard</h2>
+
+<p><b>Total Products:</b> {{products.length}}</p>
+
+<p><b>Total Quantity:</b> {{totalQty()}}</p>
+
+<p><b>Total Business Value:</b> ₹ {{totalValue()}}</p>
+
+</div>
+
+`,
+controller:"DashboardCtrl"
+})
+
+.when("/contact",{
+template:`
+
+<div class="card">
+
+<h2>Contact</h2>
+
+<input placeholder="Name"><br>
+<input placeholder="Email"><br>
+<textarea placeholder="Message"></textarea><br>
+
+<button>Send</button>
+
+</div>
+
+`
+})
+
+.otherwise({redirectTo:"/login"})
+
+})
+
+app.factory("ProductService",function(){
+
+var products = JSON.parse(localStorage.getItem("products") || "[]");
+
+function save(){
+localStorage.setItem("products",JSON.stringify(products));
+}
+
+return{
+
+get:function(){
+return products;
+},
+
+add:function(p){
+products.push(p);
+save();
+},
+
+delete:function(id){
+
+for(var i=0;i<products.length;i++){
+if(products[i].id==id){
+products.splice(i,1);
+break;
+}
+}
+
+save();
+
+},
+
+update:function(p){
+
+for(var i=0;i<products.length;i++){
+if(products[i].id==p.id){
+products[i]=p;
+}
+}
+
+save();
+
+},
+
+setCurrent:function(p){
+this.current=p;
+},
+
+getCurrent:function(){
+return this.current;
+}
+
+}
+
+})
+
+app.controller("LoginCtrl",function($scope,$location){
+
+$scope.login=function(){
+
+if($scope.username=="admin" && $scope.password=="1234"){
+$location.path("/home")
+}else{
+alert("Invalid Login")
+}
+
+}
+
+})
+
+app.controller("ProductCtrl",function($scope,$location,ProductService){
+
+$scope.products=ProductService.get();
+
+$scope.remove=function(id){
+
+if(confirm("Delete product?")){
+ProductService.delete(id);
+$scope.products=ProductService.get();
+}
+
+}
+
+$scope.edit=function(p){
+
+ProductService.setCurrent(angular.copy(p));
+$location.path("/add");
+
+}
+
+$scope.sortPrice=function(){
+
+$scope.products.sort(function(a,b){
+return b.price-a.price;
+})
+
+}
+
+$scope.sortQty=function(){
+
+$scope.products.sort(function(a,b){
+return b.qty-a.qty;
+})
+
+}
+
+})
+
+app.controller("AddCtrl",function($scope,$location,ProductService){
+
+$scope.product = ProductService.getCurrent() || {};
+
+$scope.uploadImage=function(input){
+
+var file=input.files[0];
+var reader=new FileReader();
+
+reader.onload=function(e){
+
+$scope.$apply(function(){
+$scope.product.image = e.target.result;
+})
+
+}
+
+reader.readAsDataURL(file);
+
+}
+
+$scope.save=function(){
+
+if(ProductService.getCurrent()){
+ProductService.update($scope.product);
+}else{
+ProductService.add($scope.product);
+}
+
+ProductService.setCurrent(null);
+
+$location.path("/products");
+
+}
+
+})
+
+app.controller("DashboardCtrl",function($scope,ProductService){
+
+$scope.products=ProductService.get();
+
+$scope.totalQty=function(){
+
+var total=0;
+
+for(var i=0;i<$scope.products.length;i++){
+total += parseInt($scope.products[i].qty) || 0;
+}
+
+return total;
+
+}
+
+$scope.totalValue=function(){
+
+var total=0;
+
+for(var i=0;i<$scope.products.length;i++){
+total += ($scope.products[i].price * $scope.products[i].qty);
+}
+
+return total;
+
+}
+
+})
+
+</script>
+
+</body>
+</html>
+```
